@@ -35,6 +35,10 @@ build/
 .vscode/
 .idea/
 ReduceSideJoin/reduce_input/
+ReduceSideJoin/reduce_output/
+*/input
+*/output
+*/output2
 
 ### Mac OS ###
 .DS_Store
