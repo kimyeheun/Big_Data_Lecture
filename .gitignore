@@ -34,7 +34,7 @@ build/
 ### VS Code ###
 .vscode/
 .idea/
-reduce_input/
+ReduceSideJoin/reduce_input/
 
 ### Mac OS ###
 .DS_Store
