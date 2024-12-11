@@ -1,14 +1,7 @@
 package org.BigData;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.util.Date;
-import java.time.LocalDate;
-import java.util.Random;
-
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -21,6 +14,10 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+
+import java.io.IOException;
+import java.time.LocalDate;
+import java.util.Random;
 
 public class ReduceSideJoin extends Configured implements Tool{
     public static void main(String[] args) throws Exception {
@@ -69,8 +66,6 @@ public class ReduceSideJoin extends Configured implements Tool{
 
             if ((d.isBefore(shipdate) || d.isEqual(shipdate))
                     && d_1.isAfter(shipdate)) {
-                System.out.println("Mapper Key 타입 : " + key.toString());
-                System.out.println("Mapper Value 타입: " + value.toString());
                 context.write(key, value);
             }
         }
@@ -81,6 +76,7 @@ public class ReduceSideJoin extends Configured implements Tool{
      * 데이터 라인을 불러와서 hadoop에 <key, value> 형태로 저장
      * L (출력 예시): 5|2506|9653|50.52|y stealthy deposits. furiously final pinto beans wake furiou|
      *
+     * 주의 : Reducer에서 해당 v 값을 MapperLineItem와 구분할 수 있어야 한다.
      * return : 100000|2510	31 == partkey|suppkey  availqty(제공 가능한 부품의 수량)
      */
     public static class MapperPartSupp extends Mapper<Object, Text, Text, IntWritable> {
@@ -94,38 +90,20 @@ public class ReduceSideJoin extends Configured implements Tool{
             // L: a recode of partsupp table
             String[] buffer = L.toString().split("\\|");
 
-            // key <- partkey + "|" + suppkey
-            key.set(buffer[0] + "|" + buffer[1]); // PS_PARTKEY|PS_SUPPKEY
+            // key <- partkey + "|" + suppkey + "| a" <- 구분자 삽입!
+            key.set(buffer[0] + "|" + buffer[1] + "| a"); // PS_PARTKEY|PS_SUPPKEY
             // value <- availqty
             value.set(Integer.parseInt(buffer[2]));
             // EMIT(k, v)
-            System.out.println("Mapper Key 타입 : " + key.toString());
-            System.out.println("Mapper Value 타입: " + value.toString());
             context.write(key, value);
         }
     }
 
-//    public static class ReducerSide extends
-//            Reducer<Text, IntWritable, Text, IntWritable> {
-//
-//        @Override
-//        protected void reduce(Text key, Iterable<IntWritable> values,
-//                              Context context)
-//            throws IOException, InterruptedException {
-//
-//            // FIXME: values 출력 어떻게 나오는지 확인.
-//            System.out.println("Reducer key : " + key.toString());
-//
-//            int sum = 0;
-//
-//            for (IntWritable val : values) {
-//                sum = sum + val.get();  // val.get() = quantity
-//            }
-//
-//            context.write(key, new IntWritable(sum));
-//        }
-//    }
-
+    /**
+     * 이름: JOB 3 - MapperForReducer
+     * 데이터 라인을 불러와서 hadoop에 <key, value> 타입을 <Text, Text>에서 <Text, intWritable>로 바꿈
+     * return : 100000|2510	31 == partkey|suppkey  availqty(제공 가능한 부품의 수량)
+     */
     public static class MapperForReducer extends Mapper<Text, Text, Text, IntWritable> {
         @Override
         protected void map(Text key, Text value, Context context) throws IOException, InterruptedException {
@@ -134,19 +112,36 @@ public class ReduceSideJoin extends Configured implements Tool{
         }
     }
 
-    public static class ReducerSide extends Reducer<Text, IntWritable, Text, IntWritable> {
+    /**
+     * 이름: JOB 3 - ReducerSide
+     * <key, value> 를 불러와서 join
+     *
+     * return : 100000|2510	31 (두 매퍼의 결과를 join한 형태)
+     */
+    public static class ReducerSide extends
+            Reducer<Text, IntWritable, Text, IntWritable> {
 
         @Override
         protected void reduce(Text key, Iterable<IntWritable> values, Context context)
                 throws IOException, InterruptedException {
 
-            // 값을 합산하는 부분
+            //method REDUCE (text k, valuse [v1, v2, …] )
+            //L ← new List()
+            //if (availqty exist in valuse [v1, v2, …])
+            //for all v ∈ valuse [v1, v2, …] do
+            //sum ← sum + quantity
+            //L←k
+            //if (availqty > 0.5 * sum )
+            //for all k ∈ L do
+            //s[] ← split (k, “|” )
+            //EMIT (s[0], s[1] )
+
+            // if (availqty exist in valuse [v1, v2, …]) <- values는 item과
             int sum = 0;
             for (IntWritable val : values) {
-                sum += val.get();  // 각 Mapper에서 전달된 수량을 더함
+                sum += val.get();   // val.get() = quantity
             }
 
-            // 최종 결과를 출력
             context.write(key, new IntWritable(sum));
         }
     }
