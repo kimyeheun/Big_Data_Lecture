@@ -160,44 +160,44 @@ public class ReduceSideJoin extends Configured implements Tool{
     public int run(String[] args) throws Exception {
         System.out.println("Running ReduceSideJoin");
 
-//        // NOTE: MAP
-//        // Job1 생성
-//        Job maplineitem = Job.getInstance(getConf());
-//        // Job 이름(ID) 생성
-//        maplineitem.setJobName("MapperLineItem");
-//        // Mapper, Reducer 설정
-//        maplineitem.setJarByClass(ReduceSideJoin.class);
-//        maplineitem.setMapperClass(MapperLineItem.class);
-//        // OUTPUT <key, value> 세팅
-//        maplineitem.setMapOutputKeyClass(Text.class);
-//        maplineitem.setMapOutputValueClass(IntWritable.class);
-//        // input, output format 넣기
-//        maplineitem.setInputFormatClass(TextInputFormat.class);
-//        maplineitem.setOutputFormatClass(TextOutputFormat.class);
-//        // input, output 경로 설정
-//        FileInputFormat.addInputPath(maplineitem, new Path(args[0]+"/lineitem.tbl"));
-//        FileOutputFormat.setOutputPath(maplineitem, new Path(args[1]+"/line"));
-//        // job 실행
-//        maplineitem.waitForCompletion(true);
-//
-//        // Job2 생성
-//        Job mappartsupp = Job.getInstance(getConf());
-//        // Job 이름(ID) 생성
-//        mappartsupp.setJobName("MapperPartSupp");
-//        // Mapper, Reducer 설정
-//        mappartsupp.setJarByClass(ReduceSideJoin.class);
-//        mappartsupp.setMapperClass(MapperPartSupp.class);
-//        // OUTPUT <key, value> 세팅
-//        mappartsupp.setMapOutputKeyClass(Text.class);
-//        mappartsupp.setMapOutputValueClass(IntWritable.class);
-//        // input, output format 넣기
-//        mappartsupp.setInputFormatClass(TextInputFormat.class);
-//        mappartsupp.setOutputFormatClass(TextOutputFormat.class);
-//        // input, output 경로 설정
-//        FileInputFormat.addInputPath(mappartsupp, new Path(args[0]+"/partsupp.tbl"));
-//        FileOutputFormat.setOutputPath(mappartsupp, new Path(args[1]+"/part"));
-//        // job 실행
-//        mappartsupp.waitForCompletion(true);
+        // NOTE: MAP
+        // Job1 생성
+        Job maplineitem = Job.getInstance(getConf());
+        // Job 이름(ID) 생성
+        maplineitem.setJobName("MapperLineItem");
+        // Mapper, Reducer 설정
+        maplineitem.setJarByClass(ReduceSideJoin.class);
+        maplineitem.setMapperClass(MapperLineItem.class);
+        // OUTPUT <key, value> 세팅
+        maplineitem.setMapOutputKeyClass(Text.class);
+        maplineitem.setMapOutputValueClass(IntWritable.class);
+        // input, output format 넣기
+        maplineitem.setInputFormatClass(TextInputFormat.class);
+        maplineitem.setOutputFormatClass(TextOutputFormat.class);
+        // input, output 경로 설정
+        FileInputFormat.addInputPath(maplineitem, new Path(args[0]+"/lineitem.tbl"));
+        FileOutputFormat.setOutputPath(maplineitem, new Path(args[1]+"/line"));
+        // job 실행
+        maplineitem.waitForCompletion(true);
+
+        // Job2 생성
+        Job mappartsupp = Job.getInstance(getConf());
+        // Job 이름(ID) 생성
+        mappartsupp.setJobName("MapperPartSupp");
+        // Mapper, Reducer 설정
+        mappartsupp.setJarByClass(ReduceSideJoin.class);
+        mappartsupp.setMapperClass(MapperPartSupp.class);
+        // OUTPUT <key, value> 세팅
+        mappartsupp.setMapOutputKeyClass(Text.class);
+        mappartsupp.setMapOutputValueClass(IntWritable.class);
+        // input, output format 넣기
+        mappartsupp.setInputFormatClass(TextInputFormat.class);
+        mappartsupp.setOutputFormatClass(TextOutputFormat.class);
+        // input, output 경로 설정
+        FileInputFormat.addInputPath(mappartsupp, new Path(args[0]+"/partsupp.tbl"));
+        FileOutputFormat.setOutputPath(mappartsupp, new Path(args[1]+"/part"));
+        // job 실행
+        mappartsupp.waitForCompletion(true);
 
         // TODO: reducer 결과 출력하기
         System.out.println("Running Reducer");
