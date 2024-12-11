@@ -15,6 +15,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
@@ -39,6 +40,8 @@ public class ReduceSideJoin extends Configured implements Tool{
      * L (출력 예시): 3|29380|1883|4|2|2618.76|0.01|0.06|A|F|1993-12-04|1994-01-07|1994-01-01|NONE|TRUCK|y. fluffily pending d|
      *              L_ORDERKEY|L_PARTKEY|
      * 조건: shipdate
+     *
+     * return : 100000|2510	9282  == partkey|suppkey  quantity(주문된 부품의 개수)
      */
     public static class MapperLineItem extends Mapper<Object, Text, Text, IntWritable> {
         Text key = new Text();
@@ -66,6 +69,8 @@ public class ReduceSideJoin extends Configured implements Tool{
 
             if ((d.isBefore(shipdate) || d.isEqual(shipdate))
                     && d_1.isAfter(shipdate)) {
+                System.out.println("Mapper Key 타입 : " + key.toString());
+                System.out.println("Mapper Value 타입: " + value.toString());
                 context.write(key, value);
             }
         }
@@ -75,6 +80,8 @@ public class ReduceSideJoin extends Configured implements Tool{
      * 이름: JOB 2 - MapperPartSupp
      * 데이터 라인을 불러와서 hadoop에 <key, value> 형태로 저장
      * L (출력 예시): 5|2506|9653|50.52|y stealthy deposits. furiously final pinto beans wake furiou|
+     *
+     * return : 100000|2510	31 == partkey|suppkey  availqty(제공 가능한 부품의 수량)
      */
     public static class MapperPartSupp extends Mapper<Object, Text, Text, IntWritable> {
         Text key = new Text();
@@ -83,37 +90,63 @@ public class ReduceSideJoin extends Configured implements Tool{
         @Override
         protected void map(Object l, Text L,
                            Mapper<Object, Text, Text, IntWritable>.Context context)
-            throws IOException, InterruptedException {
-            // L: a recode of lineitem table
+                throws IOException, InterruptedException {
+            // L: a recode of partsupp table
             String[] buffer = L.toString().split("\\|");
 
             // key <- partkey + "|" + suppkey
-            key.set(buffer[0]+"|"+buffer[1]); // PS_PARTKEY|PS_SUPPKEY
-            // value <- quantity
+            key.set(buffer[0] + "|" + buffer[1]); // PS_PARTKEY|PS_SUPPKEY
+            // value <- availqty
             value.set(Integer.parseInt(buffer[2]));
             // EMIT(k, v)
+            System.out.println("Mapper Key 타입 : " + key.toString());
+            System.out.println("Mapper Value 타입: " + value.toString());
             context.write(key, value);
         }
     }
 
-    public static class ReducerSide extends
-            Reducer<Text, IntWritable, Text, IntWritable> {
+//    public static class ReducerSide extends
+//            Reducer<Text, IntWritable, Text, IntWritable> {
+//
+//        @Override
+//        protected void reduce(Text key, Iterable<IntWritable> values,
+//                              Context context)
+//            throws IOException, InterruptedException {
+//
+//            // FIXME: values 출력 어떻게 나오는지 확인.
+//            System.out.println("Reducer key : " + key.toString());
+//
+//            int sum = 0;
+//
+//            for (IntWritable val : values) {
+//                sum = sum + val.get();  // val.get() = quantity
+//            }
+//
+//            context.write(key, new IntWritable(sum));
+//        }
+//    }
+
+    public static class MapperForReducer extends Mapper<Text, Text, Text, IntWritable> {
+        @Override
+        protected void map(Text key, Text value, Context context) throws IOException, InterruptedException {
+            int intValue = Integer.parseInt(value.toString());
+            context.write(key, new IntWritable(intValue));
+        }
+    }
+
+    public static class ReducerSide extends Reducer<Text, IntWritable, Text, IntWritable> {
 
         @Override
-        protected void reduce(Text key, Iterable<IntWritable> values,
-                              Reducer<Text, IntWritable, Text, IntWritable>.Context context)
-            throws IOException, InterruptedException {
+        protected void reduce(Text key, Iterable<IntWritable> values, Context context)
+                throws IOException, InterruptedException {
 
-            // FIXME: values 출력 어떻게 나오는지 확인.
-            System.out.println("<<Reducer>>");
-            System.out.println(values.toString());
-
+            // 값을 합산하는 부분
             int sum = 0;
-
             for (IntWritable val : values) {
-                sum = sum + val.get();  // val.get() = quantity
+                sum += val.get();  // 각 Mapper에서 전달된 수량을 더함
             }
 
+            // 최종 결과를 출력
             context.write(key, new IntWritable(sum));
         }
     }
@@ -126,11 +159,13 @@ public class ReduceSideJoin extends Configured implements Tool{
      */
     public int run(String[] args) throws Exception {
         System.out.println("Running ReduceSideJoin");
+
+//        // NOTE: MAP
 //        // Job1 생성
 //        Job maplineitem = Job.getInstance(getConf());
 //        // Job 이름(ID) 생성
 //        maplineitem.setJobName("MapperLineItem");
-//        // key 설정
+//        // Mapper, Reducer 설정
 //        maplineitem.setJarByClass(ReduceSideJoin.class);
 //        maplineitem.setMapperClass(MapperLineItem.class);
 //        // OUTPUT <key, value> 세팅
@@ -145,13 +180,11 @@ public class ReduceSideJoin extends Configured implements Tool{
 //        // job 실행
 //        maplineitem.waitForCompletion(true);
 //
-//
-//        System.out.println("Running MapperPartSupp");
 //        // Job2 생성
 //        Job mappartsupp = Job.getInstance(getConf());
 //        // Job 이름(ID) 생성
 //        mappartsupp.setJobName("MapperPartSupp");
-//        // key 설정
+//        // Mapper, Reducer 설정
 //        mappartsupp.setJarByClass(ReduceSideJoin.class);
 //        mappartsupp.setMapperClass(MapperPartSupp.class);
 //        // OUTPUT <key, value> 세팅
@@ -172,19 +205,24 @@ public class ReduceSideJoin extends Configured implements Tool{
         Job reduceSide = Job.getInstance(getConf());
         // Job 이름(ID) 생성
         reduceSide.setJobName("Reducer");
-        // key 설정
+        // Mapper, Reducer 설정
         reduceSide.setJarByClass(ReduceSideJoin.class);
+
+        reduceSide.setMapperClass(MapperForReducer.class);
         reduceSide.setReducerClass(ReducerSide.class);
         // OUTPUT <key, value> 세팅
         reduceSide.setMapOutputKeyClass(Text.class);
         reduceSide.setMapOutputValueClass(IntWritable.class);
         // input, output format 넣기
-        reduceSide.setInputFormatClass(TextInputFormat.class);
+        reduceSide.setInputFormatClass(KeyValueTextInputFormat.class);
         reduceSide.setOutputFormatClass(TextOutputFormat.class);
         // input, output 경로 설정
-        FileInputFormat.addInputPath(reduceSide, new Path(args[1]+"/line"));
-//        FileInputFormat.addInputPath(reduceSide, new Path(args[1]+"/part"));
+        System.out.println("Running Reducer?");
+
+        FileInputFormat.addInputPath(reduceSide, new Path(args[1]+"/line/part-r-00000"));
+        FileInputFormat.addInputPath(reduceSide, new Path(args[1]+"/part/part-r-00000"));
         FileOutputFormat.setOutputPath(reduceSide, new Path(args[1]+"/final"));
+
         // job 실행
         reduceSide.waitForCompletion(true);
         return 0;
