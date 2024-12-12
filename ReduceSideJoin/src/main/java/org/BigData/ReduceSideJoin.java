@@ -4,6 +4,7 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.VIntWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -17,6 +18,8 @@ import org.apache.hadoop.util.ToolRunner;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 public class ReduceSideJoin extends Configured implements Tool{
@@ -56,8 +59,8 @@ public class ReduceSideJoin extends Configured implements Tool{
             LocalDate d = getRandomDate(); // 1993~1997년 사이의 무작위 연도의 1월 1일
             LocalDate d_1 = d.plusYears(1);
 
-            // key <- partkey + "|" + suppkey
-            key.set(buffer[1]+"|"+buffer[2]); // L_PARTKEY|L_SUPPKEY
+            // key <- partkey + "|" + suppkey + "|q" <- 구분자 삽입!
+            key.set(buffer[1]+"|"+buffer[2] +  "|q"); // L_PARTKEY|L_SUPPKEY
             // value <- quantity
             value.set(Integer.parseInt(buffer[4]));
 
@@ -68,6 +71,14 @@ public class ReduceSideJoin extends Configured implements Tool{
                     && d_1.isAfter(shipdate)) {
                 context.write(key, value);
             }
+        }
+    }
+
+    public static class ReducerLineItem extends Reducer<Text, IntWritable, Text, IntWritable> {
+        @Override
+        protected void reduce(Text key, Iterable<IntWritable> values, Context context)
+                throws IOException, InterruptedException {
+
         }
     }
 
@@ -90,8 +101,8 @@ public class ReduceSideJoin extends Configured implements Tool{
             // L: a recode of partsupp table
             String[] buffer = L.toString().split("\\|");
 
-            // key <- partkey + "|" + suppkey + "| a" <- 구분자 삽입!
-            key.set(buffer[0] + "|" + buffer[1] + "| a"); // PS_PARTKEY|PS_SUPPKEY
+            // key <- partkey + "|" + suppkey + "|a" <- 구분자 삽입!
+            key.set(buffer[0] + "|" + buffer[1] + "|a"); // PS_PARTKEY|PS_SUPPKEY
             // value <- availqty
             value.set(Integer.parseInt(buffer[2]));
             // EMIT(k, v)
@@ -101,14 +112,19 @@ public class ReduceSideJoin extends Configured implements Tool{
 
     /**
      * 이름: JOB 3 - MapperForReducer
-     * 데이터 라인을 불러와서 hadoop에 <key, value> 타입을 <Text, Text>에서 <Text, intWritable>로 바꿈
-     * return : 100000|2510	31 == partkey|suppkey  availqty(제공 가능한 부품의 수량)
+     * 데이터 라인을 불러와서 hadoop에 key 값의 타입 (q, a)를 읽고, value에 타입을 적용하여 Reducer로 넘김
+     *
+     * input : 100000|2510|q	31
+     * return : 100000|2510	31q
      */
-    public static class MapperForReducer extends Mapper<Text, Text, Text, IntWritable> {
+    public static class MapperForReducer extends Mapper<Text, Text, Text, Text> {
         @Override
         protected void map(Text key, Text value, Context context) throws IOException, InterruptedException {
-            int intValue = Integer.parseInt(value.toString());
-            context.write(key, new IntWritable(intValue));
+            String sep = key.toString().endsWith("a") ? "a" : "q";
+            String newKey = key.toString().substring(0, key.toString().length() - 2);
+            Text newValue = new Text(value + sep);
+
+            context.write(new Text(newKey), newValue);
         }
     }
 
@@ -116,33 +132,56 @@ public class ReduceSideJoin extends Configured implements Tool{
      * 이름: JOB 3 - ReducerSide
      * <key, value> 를 불러와서 join
      *
-     * return : 100000|2510	31 (두 매퍼의 결과를 join한 형태)
+     * [1]. 데이터 읽기
+     * 100000|2510	31q
+     * 100000|2510	433a 형태의 값들을 읽고, 리스트로 저장.
+     * [2]. key 값 별로 value 묶기
+     * 100000|2510	31q 433a
+     * [3]. quantity의 합계 구하기 + availqty 찾기
+     * [4]. 조건을 만족하는지 확인
+     *
+     * return : 100000 2510 (특정 조건을 만족한 두 개의 key 값)
      */
     public static class ReducerSide extends
-            Reducer<Text, IntWritable, Text, IntWritable> {
+            Reducer<Text, Text, Text, Text> {
 
         @Override
-        protected void reduce(Text key, Iterable<IntWritable> values, Context context)
+        protected void reduce(Text key, Iterable<Text> values, Context context)
                 throws IOException, InterruptedException {
 
-            //method REDUCE (text k, valuse [v1, v2, …] )
-            //L ← new List()
-            //if (availqty exist in valuse [v1, v2, …])
-            //for all v ∈ valuse [v1, v2, …] do
-            //sum ← sum + quantity
-            //L←k
-            //if (availqty > 0.5 * sum )
-            //for all k ∈ L do
-            //s[] ← split (k, “|” )
-            //EMIT (s[0], s[1] )
-
-            // if (availqty exist in valuse [v1, v2, …]) <- values는 item과
             int sum = 0;
-            for (IntWritable val : values) {
-                sum += val.get();   // val.get() = quantity
+            int availqty = -1;
+
+            List<String> valueList = new ArrayList<>();
+            for (Text val : values) {
+                valueList.add(val.toString());
             }
 
-            context.write(key, new IntWritable(sum));
+//            context.write(new Text("Debug - Key: " + key), new Text("Values: " + valueList));
+
+            for (String val : valueList) {
+                int intval = Integer.parseInt(val.substring(0, val.length() - 1));
+                if (val.endsWith("q")) {
+                    // sum ← sum + quantity
+                    sum += intval;
+                }
+                else { // (key.endsWith("a"))
+                    availqty = intval;
+                }
+            }
+
+            // if (availqty exist in valuse [v1, v2, …]) <- values는 item 테이블과 supp 테이블의 값들로 이루어져 있다.
+            if (availqty != -1) {
+                // if (availqty > 0.5 * sum )
+                if (sum > 0 && availqty > 0.5 * sum) {
+                    // s[] ← split (k, “|” )
+                    String[] realKeys = key.toString().split("\\|");
+                    // EMIT (s[0], s[1] )
+                    Text s0 = new Text(realKeys[0]);
+                    Text s1 = new Text(realKeys[1]);
+                    context.write(s0, s1);
+                }
+            }
         }
     }
 
@@ -207,13 +246,11 @@ public class ReduceSideJoin extends Configured implements Tool{
         reduceSide.setReducerClass(ReducerSide.class);
         // OUTPUT <key, value> 세팅
         reduceSide.setMapOutputKeyClass(Text.class);
-        reduceSide.setMapOutputValueClass(IntWritable.class);
+        reduceSide.setMapOutputValueClass(Text.class);
         // input, output format 넣기
         reduceSide.setInputFormatClass(KeyValueTextInputFormat.class);
         reduceSide.setOutputFormatClass(TextOutputFormat.class);
         // input, output 경로 설정
-        System.out.println("Running Reducer?");
-
         FileInputFormat.addInputPath(reduceSide, new Path(args[1]+"/line/part-r-00000"));
         FileInputFormat.addInputPath(reduceSide, new Path(args[1]+"/part/part-r-00000"));
         FileOutputFormat.setOutputPath(reduceSide, new Path(args[1]+"/final"));
