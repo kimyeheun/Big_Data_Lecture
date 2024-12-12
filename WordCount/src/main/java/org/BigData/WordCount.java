@@ -55,26 +55,26 @@ public class WordCount extends Configured implements Tool {
     }
 
     public int run(String[] args) throws Exception {
-        Job myjob = Job.getInstance(getConf());
+        Job wordCount = Job.getInstance(getConf());
 
-        myjob.setJarByClass(WordCount.class);
-        myjob.setMapperClass(WCMapper.class);
-        myjob.setReducerClass(WCReducer.class);
+        wordCount.setJarByClass(WordCount.class);
+        wordCount.setMapperClass(WCMapper.class);
+        wordCount.setReducerClass(WCReducer.class);
 
-        myjob.setMapOutputKeyClass(Text.class);
-        myjob.setMapOutputValueClass(IntWritable.class);
+        wordCount.setMapOutputKeyClass(Text.class);
+        wordCount.setMapOutputValueClass(IntWritable.class);
 
-        myjob.setOutputFormatClass(TextOutputFormat.class);
-        myjob.setInputFormatClass(TextInputFormat.class);
+        wordCount.setOutputFormatClass(TextOutputFormat.class);
+        wordCount.setInputFormatClass(TextInputFormat.class);
 
-        FileInputFormat.addInputPath(myjob, new Path(args[0]));
-        FileOutputFormat.setOutputPath(myjob, new Path(args[1]));
+        FileInputFormat.addInputPath(wordCount, new Path(args[0]));
+        FileOutputFormat.setOutputPath(wordCount, new Path(args[1]));
         /**
          * original code.
-         * FileOutputFormat.setOutputPath(myjob, new
+         * FileOutputFormat.setOutputPath(wordCount, new
          *                 Path(args[0]).suffix(".out"));
          */
-        myjob.waitForCompletion(true);
+        wordCount.waitForCompletion(true);
         return 0;
     }
 }

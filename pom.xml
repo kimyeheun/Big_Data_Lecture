@@ -5,10 +5,12 @@
     <groupId>org.BigData</groupId>
     <artifactId>BigDataLecture</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
 
     <modules>
         <module>WordCount</module>
         <module>ReduceSideJoin</module>
+        <module>FrequentItemsetMining</module>
     </modules>
 </project>
 
