@@ -56,94 +56,6 @@ public class FrequentItemsetMining extends Configured implements Tool {
         }
     }
 
-//    public static class ApriKMap extends Mapper<Object, Text, Text, IntWritable> {
-//        Set<String> kItems = new HashSet<>();
-//        Text word = new Text();
-//        IntWritable one = new IntWritable(1);
-//
-//        /***
-//         * 이전 reducer output 가져와서 key 값 처리
-//         */
-//        @Override
-//        protected void setup(Context context) throws IOException, InterruptedException {
-//            URI[] cacheFiles = context.getCacheFiles();
-//            if (cacheFiles != null && cacheFiles.length > 0) {
-//                // 캐시 파일의 이름만 가져오기
-//                Path filePath = new Path(cacheFiles[0].getPath());
-//                BufferedReader reader = new BufferedReader(new FileReader(filePath.getName()));  // 로컬 파일 이름 사용
-//                String line;
-//                while ((line = reader.readLine()) != null) {
-//                    String[] parts = line.split("\t");
-//                    StringBuilder sb = new StringBuilder();
-//
-//                    for (int i = 0; i < parts.length - 1; i++) {
-//                        sb.append(parts[i]).append("\t");  // 항목과 탭 문자 추가
-//                    }
-//
-//                    sb.append(parts[parts.length - 1]);
-//
-//                    String result = sb.toString();
-//                    kItems.add(result);
-//                    context.write(new Text("result: " + result), new IntWritable(0));
-//                }
-//                reader.close();
-//            }
-//        }
-//
-//        private void generateCombinations(List<String> keyList, int k, Context context) throws IOException, InterruptedException {
-//            if (keyList.size() < k) return; // keyList의 크기가 k보다 작은 경우 바로 리턴
-//
-//            List<String> current = new ArrayList<>();
-//            // 조합을 생성하여 결과 출력
-//            generateCombinationsRecursive(keyList, k, 0, current, context);
-//        }
-//
-//        private void generateCombinationsRecursive(List<String> keyList, int k, int start, List<String> current, Context context) throws IOException, InterruptedException {
-//            if (current.size() == k) {
-//                // k개의 항목을 조합하여 출력
-//                String newKey = String.join(" ", current);
-//                word.set(newKey);
-//                context.write(word, one);
-//                return;
-//            }
-//
-//            for (int i = start; i < keyList.size(); i++) {
-//                current.add(keyList.get(i));
-//                generateCombinationsRecursive(keyList, k, i + 1, current, context);
-//                current.remove(current.size() - 1); // 마지막 항목 제거
-//            }
-//        }
-//
-//        @Override
-//        protected void map(Object key, Text value,
-//                           Mapper<Object, Text, Text, IntWritable>.Context context)
-//                throws IOException, InterruptedException {
-//
-//            List<String> keyList = new ArrayList<>();
-//
-//            // 원본 문서에서 각 줄을 읽어, 각 key 쌍을 가지고 있는 빈도를 구하기
-//            String[] tokens = value.toString().split(" ");
-//            // 유효한 아이템만 리스트에 추가
-//            for (String token : tokens) {
-//                // TODO: kitems = Set<String> ex. 988	1164 ==> 각 수를 순회하면서 일치하는지 확인!
-//                if (kItems.contains(token.trim())) {
-//                    keyList.add(token.trim());
-//                }
-//            }
-//
-//            // 조합 구하기
-//            generateCombinations(keyList, k + 1, context);  // k+1 항목 조합 생성//
-//            // String[] validArray = keyList.toArray(new String[0]);
-////            for (int i = 0; i < validArray.length; i++) {
-////                for (int j = i + 1; j < validArray.length; j++) {
-////                    String newKey = validArray[i] + " " + validArray[j];
-////                    word.set(newKey);
-////                    context.write(word, one); // 빈도 계산용
-////                }
-////            }
-//        }
-//    }
-
     public static class ApriKMap extends Mapper<Object, Text, Text, IntWritable> {
         Set<String> kItems = new HashSet<>();
         Text word = new Text();
@@ -180,28 +92,6 @@ public class FrequentItemsetMining extends Configured implements Tool {
             }
         }
 
-//        private void generateCombinations(List<String> keyList, Context context) throws IOException, InterruptedException {
-//            if (keyList.size() < k) return; // keyList의 크기가 k보다 작은 경우 바로 리턴
-//
-//            List<String> current = new ArrayList<>();
-//            generateCombinationsRecursive(keyList,0, current, context);
-//        }
-//
-//        private void generateCombinationsRecursive(List<String> keyList, int start, List<String> current, Context context) throws IOException, InterruptedException {
-//            if (current.size() == k + 1) {
-//                String newKey = String.join(".", current);
-//                word.set(newKey);
-//                System.out.println("newKey: " + newKey);
-//                context.write(word, one);
-//                return;
-//            }
-//
-//            for (int i = start; i < keyList.size(); i++) {
-//                current.add(keyList.get(i));
-//                generateCombinationsRecursive(keyList, i + 1, current, context);
-//                current.remove(current.size() - 1);
-//            }
-//        }
 
         public static List<List<String>> generateCombinations(Set<String> keyList) {
             List<String> keys = new ArrayList<>(keyList);  // Set을 List로 변환
