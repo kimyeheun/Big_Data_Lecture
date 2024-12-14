@@ -354,7 +354,7 @@ public class KmeansClustering extends Configured implements Tool {
         Kmeans_1.setOutputFormatClass(TextOutputFormat.class);
         Kmeans_1.setInputFormatClass(TextInputFormat.class);
 
-        FileInputFormat.addInputPath(Kmeans_1, new Path(args[0] + "/coordinates.txt"));
+        FileInputFormat.addInputPath(Kmeans_1, new Path(args[0] + "/dense_coordinates.txt"));
         FileOutputFormat.setOutputPath(Kmeans_1, new Path(args[1] + "/" + iter));
 
         Kmeans_1.waitForCompletion(true);
@@ -380,7 +380,7 @@ public class KmeansClustering extends Configured implements Tool {
 
             Path kPath = new Path(args[1] + "/" + iter + "/part-r-00000");
             Kmeans.addCacheFile(kPath.toUri());
-            FileInputFormat.addInputPath(Kmeans, new Path(args[0] + "/coordinates.txt"));
+            FileInputFormat.addInputPath(Kmeans, new Path(args[0] + "/dense_coordinates.txt"));
             FileOutputFormat.setOutputPath(Kmeans, new Path(args[1] + "/" + (iter + 1)));
 
             if (!Kmeans.waitForCompletion(true)) {
