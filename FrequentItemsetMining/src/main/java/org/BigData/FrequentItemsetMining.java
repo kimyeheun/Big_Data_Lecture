@@ -69,8 +69,8 @@ public class FrequentItemsetMining extends Configured implements Tool {
             URI[] cacheFiles = context.getCacheFiles();
             if (cacheFiles != null && cacheFiles.length > 0) {
                 Path filePath = new Path(cacheFiles[0].getPath());
-//                BufferedReader reader = new BufferedReader(new FileReader(filePath.getName()));
-                BufferedReader reader = new BufferedReader(new FileReader(filePath.toString())); // 로컬
+                BufferedReader reader = new BufferedReader(new FileReader(filePath.getName()));
+//                BufferedReader reader = new BufferedReader(new FileReader(filePath.toString())); // 로컬
                 String line;
                 while ((line = reader.readLine()) != null) {
                     // <key, value> 분류
@@ -148,6 +148,7 @@ public class FrequentItemsetMining extends Configured implements Tool {
             }
         }
     }
+
     public static class ApriReduce extends Reducer<Text, IntWritable, Text, IntWritable> {
         IntWritable freq = new IntWritable();
 

@@ -73,13 +73,6 @@ public class ReduceSideJoin extends Configured implements Tool{
         }
     }
 
-    public static class ReducerLineItem extends Reducer<Text, IntWritable, Text, IntWritable> {
-        @Override
-        protected void reduce(Text key, Iterable<IntWritable> values, Context context)
-                throws IOException, InterruptedException {
-
-        }
-    }
 
     /**
      * 이름: JOB 2 - MapperPartSupp
@@ -156,8 +149,6 @@ public class ReduceSideJoin extends Configured implements Tool{
                 valueList.add(val.toString());
             }
 
-//            context.write(new Text("Debug - Key: " + key), new Text("Values: " + valueList));
-
             for (String val : valueList) {
                 int intval = Integer.parseInt(val.substring(0, val.length() - 1));
                 if (val.endsWith("q")) {
@@ -184,12 +175,7 @@ public class ReduceSideJoin extends Configured implements Tool{
         }
     }
 
-    /**
-     * Driver
-     * @param args
-     * @return 0
-     * @throws Exception
-     */
+
     public int run(String[] args) throws Exception {
         System.out.println("Running ReduceSideJoin");
 

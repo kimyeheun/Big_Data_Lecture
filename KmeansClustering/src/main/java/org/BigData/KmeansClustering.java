@@ -135,35 +135,22 @@ public class KmeansClustering extends Configured implements Tool {
     }
 
     /**
-     * 이름:
+     * 이름: KmeansMap
+     * k 번째 mapper에 해당한다. 캐시로 이전 중심값을 받아온 후, 중심값과 데이터들 간의 거리를 계산하여 가장 가까운 중심값에 재 할당한다.
      *
-     * input :
-     * return :
+     * input : centroid, clusters
+     * return : <centroid(x, y), cluster(x, y)>
      */
     public static class KmeansMap extends Mapper<Object, Text, KmeanSet, KmeanSet> {
         Set<KmeanSet> centroids =  new HashSet<>();
-        /***
-         *
-         * Class MAPPER
-         *  method INITIALIZE
-         *      L ← new List()
-         *      Table T ← DistributedCache
-         *      for all centroid k ∈ T do
-         *          L←k
-         *  method MAP (centroid cur_k , clusters c )
-         *      int d[]
-         *      for all centroid k ∈ L do
-         *          d []← Distance(k, c)
-         *      cur_k ← k of smallest distance
-         *      EMIT (centroid cur_k, clusters c )
-         */
+
         @Override
         protected void setup(Context context) throws IOException, InterruptedException {
             URI[] cacheFiles = context.getCacheFiles();
             if (cacheFiles != null && cacheFiles.length > 0) {
                 Path filePath = new Path(cacheFiles[0].getPath());
-//                BufferedReader reader = new BufferedReader(new FileReader(filePath.getName()));
-                BufferedReader reader = new BufferedReader(new FileReader(filePath.toString())); // 로컬
+                BufferedReader reader = new BufferedReader(new FileReader(filePath.getName()));
+//                BufferedReader reader = new BufferedReader(new FileReader(filePath.toString())); // 로컬
                 String line;
                 while ((line = reader.readLine()) != null) {
                     // <key, value> 분류
@@ -236,6 +223,14 @@ public class KmeansClustering extends Configured implements Tool {
         }
     }
 
+    /**
+     * 이름: KmeansReduce
+     * values로 들어오는 clusters들의 데이터 평균을 구하고, 이를 중심값으로 설정한다.
+     * 새롭게 계산된 중심값과 이전 중심값을 비교하고, 같은 경우 k-mean 클러스터링 과정을 종료한다.
+     *
+     * input : clusters
+     * return : <new centroid(x, y), cluster(x, y)>
+     */
     public static class KmeansReduce extends Reducer<KmeanSet, KmeanSet, Text, Text> {
 
         @Override
@@ -259,23 +254,13 @@ public class KmeansClustering extends Configured implements Tool {
                     clusters.add(new ArrayList<>());
                 }
 
-//                System.out.println("xys : " + xYs.get(0));
-//                System.out.println("xys : " + xYs.get(1));
-//                System.out.println("xys : " + xYs.get(2));
-//                System.out.println("xys : " + xYs.get(3));
                 // 데이터를 k개의 구역으로 나누기
                 for (int i = 0; i < len; i++) {
                     clusters.get(i % k).add(xYs.get(i));
                 }
 
-//                System.out.println("cluster - xys : " + 0+ "- " + clusters.get(0).subList(0, 10));
-//                System.out.println("cluster - xys : " + 0+ "- " + clusters.get(1).subList(0, 10));
-//                System.out.println("cluster - xys : " + 0+ "- " + clusters.get(2).subList(0, 10));
-
-                // 각 클러스터 중심점 개선 (k개)
                 List<KmeanSet> centroids = new ArrayList<>();
                 for (List<KmeanSet> cluster : clusters) {
-//                    System.out.println("cluster: " + cluster.get(0));
                     double sumX = 0;
                     double sumY = 0;
                     for (KmeanSet point : cluster) {
@@ -287,15 +272,6 @@ public class KmeansClustering extends Configured implements Tool {
                     centroids.add(new KmeanSet(centroidX, centroidY));
                 }
 
-//                System.out.println("len - cluster (1)" + clusters.get(0));
-//                System.out.println("len - cluster (2)" + clusters.get(1));
-//                System.out.println("len - cluster (3)" + clusters.get(2));
-//                System.out.println("centeroid : "+ centroids.get(0));
-//                System.out.println("centeroid : "+ centroids.get(1));
-//                System.out.println("centeroid : "+ centroids.get(2));
-
-                // 결과 출력
-                // k개의 중심을 각 클러스터와 매핑하여 write 하기
                 for (int i = 0; i < k; i++) {
                     for (KmeanSet cluster : clusters.get(i)) {
                         context.write(new Text(centroids.get(i).toString()),
