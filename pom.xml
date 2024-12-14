@@ -11,6 +11,7 @@
         <module>WordCount</module>
         <module>ReduceSideJoin</module>
         <module>FrequentItemsetMining</module>
+        <module>KmeansClustering</module>
     </modules>
 </project>
 
