@@ -3,3 +3,5 @@
 
 1. WordCount 예제 실행
 2. Reduce-Side Join 
+3. Frequent Itemset Mining (Apriori 알고리즘)
+4. K-Means Clustering
